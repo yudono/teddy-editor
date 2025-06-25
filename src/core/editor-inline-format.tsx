@@ -25,9 +25,6 @@ export const applyInlineFormat = (
   if (!range.toString()) return; // No text selected
 
   try {
-    // Store the selected text content
-    const selectedText = range.toString();
-
     // Check if the selection is already wrapped in the target tag by traversing up the DOM
     const isFormatted = () => {
       let element = range.commonAncestorContainer;

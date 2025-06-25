@@ -1,20 +1,4 @@
-import {
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  ChevronDown,
-  List,
-  ListOrdered,
-  Link,
-  Image,
-  Video,
-  Code,
-} from "lucide-react";
+import { ChevronDown, Code } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import EditorInlineFormat from "./editor-inline-format";
 import EditorInlineAlignment from "./editor-inline-alignment";
@@ -140,265 +124,40 @@ const Editor = () => {
     setTimeout(() => updateActiveFormats(), 10);
   };
 
-  const applyInlineFormat = (tagName: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+  const toggleCodeView = () => {
+    if (!editorRef.current) return;
 
-    const range = selection.getRangeAt(0);
-    if (!range.toString()) return; // No text selected
-
-    try {
-      // Store the selected text content
-      const selectedText = range.toString();
-
-      // Check if the selection is already wrapped in the target tag by traversing up the DOM
-      const isFormatted = () => {
-        let element = range.commonAncestorContainer;
-        while (element && element !== editorRef.current) {
-          if (element.nodeType === Node.ELEMENT_NODE) {
-            const el = element as HTMLElement;
-            if (el.tagName.toLowerCase() === tagName.toLowerCase()) {
-              return { isFormatted: true, formatElement: el };
-            }
-          }
-          element = element.parentNode as Node;
-        }
-        return { isFormatted: false, formatElement: null };
-      };
-
-      const { isFormatted: hasFormat, formatElement } = isFormatted();
-      let newElement: HTMLElement | null = null;
-
-      if (hasFormat && formatElement) {
-        // Remove formatting by unwrapping
-        const parent = formatElement.parentNode;
-        const textNode = document.createTextNode(
-          formatElement.textContent || ""
-        );
-
-        parent?.replaceChild(textNode, formatElement);
-        parent?.normalize();
-
-        // Create new range for the unwrapped text
-        const newRange = document.createRange();
-        newRange.selectNodeContents(textNode);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
-      } else {
-        // Apply formatting by wrapping
-        newElement = document.createElement(tagName);
-
-        try {
-          range.surroundContents(newElement);
-
-          // Select the content inside the new element
-          const newRange = document.createRange();
-          newRange.selectNodeContents(newElement);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        } catch (e) {
-          // If surroundContents fails, use extract and insert method
-          const contents = range.extractContents();
-          newElement.appendChild(contents);
-          range.insertNode(newElement);
-
-          // Select the content inside the new element
-          const newRange = document.createRange();
-          newRange.selectNodeContents(newElement);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        }
-      }
-
-      // Update active formats immediately
-      updateActiveFormats();
-    } catch (error) {
-      console.warn("Error applying format:", error);
-      // Fallback: just update active formats
-      updateActiveFormats();
-    }
-  };
-
-  const applyAlignment = (
-    alignment: "left" | "center" | "right" | "justify"
-  ) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    let element: Node | null = range.commonAncestorContainer;
-
-    // Find the closest block element
-    while (element && element.nodeType !== Node.ELEMENT_NODE) {
-      element = element.parentNode;
-    }
-
-    if (element && element.nodeType === Node.ELEMENT_NODE) {
-      const blockElement = element as HTMLElement;
-
-      // Remove existing alignment classes
-      blockElement.style.textAlign = alignment === "left" ? "" : alignment;
-
-      updateActiveFormats();
-    }
-  };
-
-  const applyListFormat = (listType: "ul" | "ol") => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    let element = range.commonAncestorContainer;
-
-    // If we're in a text node, get its parent
-    if (element.nodeType === Node.TEXT_NODE) {
-      element = element.parentNode as Node;
-    }
-
-    // Find the closest block element or list item
-    let blockElement = element as HTMLElement;
-    while (blockElement && blockElement !== editorRef.current) {
-      if (
-        ["P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL"].includes(
-          blockElement.tagName
-        )
-      ) {
-        break;
-      }
-      blockElement = blockElement.parentElement as HTMLElement;
-    }
-
-    if (!blockElement || blockElement === editorRef.current) {
-      // Create new list if no block element found
-      const listElement = document.createElement(listType);
-      const listItem = document.createElement("li");
-      listItem.textContent = selection.toString() || "List item";
-      listElement.appendChild(listItem);
-
-      range.deleteContents();
-      range.insertNode(listElement);
-
-      // Set cursor in the list item
-      const newRange = document.createRange();
-      newRange.setStart(listItem, 0);
-      newRange.setEnd(listItem, listItem.childNodes.length);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    } else if (blockElement.tagName === "LI") {
-      // Already in a list item, toggle list type or remove list
-      const currentList = blockElement.parentElement as HTMLElement;
-      if (currentList.tagName.toLowerCase() === listType) {
-        // Remove list formatting
-        const paragraph = document.createElement("p");
-        paragraph.innerHTML = blockElement.innerHTML;
-        currentList.parentNode?.replaceChild(paragraph, currentList);
-      } else {
-        // Change list type
-        const newList = document.createElement(listType);
-        newList.innerHTML = currentList.innerHTML;
-        currentList.parentNode?.replaceChild(newList, currentList);
-      }
+    if (isCodeView) {
+      // Switch from code view to visual view
+      editorRef.current.innerHTML = htmlContent;
+      editorRef.current.contentEditable = "true";
+      setIsCodeView(false);
     } else {
-      // Convert block element to list
-      const listElement = document.createElement(listType);
-      const listItem = document.createElement("li");
-      listItem.innerHTML = blockElement.innerHTML;
-      listElement.appendChild(listItem);
-      blockElement.parentNode?.replaceChild(listElement, blockElement);
+      // Switch from visual view to code view
+      const currentHtml = editorRef.current.innerHTML;
+      setHtmlContent(currentHtml);
+      editorRef.current.contentEditable = "false";
+      editorRef.current.textContent = currentHtml;
+      setIsCodeView(true);
     }
-
-    updateActiveFormats();
   };
 
-  const insertLink = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const url = prompt("Enter URL:");
-    if (!url) return;
-
-    const selectedText = selection.toString();
-    const linkText = selectedText || url;
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.textContent = linkText;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(link);
-
-    // Clear selection
-    selection.removeAllRanges();
-  };
-
-  const insertImage = () => {
-    const url = prompt("Enter image URL:");
-    if (!url) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "Inserted image";
-    img.style.maxWidth = "100%";
-    img.style.height = "auto";
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(img);
-
-    // Clear selection
-    selection.removeAllRanges();
-  };
-
-  const insertVideo = () => {
-    const url = prompt("Enter video embed URL (YouTube, Vimeo, etc.):");
-    if (!url) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const iframe = document.createElement("iframe");
-    iframe.src = url;
-    iframe.width = "560";
-    iframe.height = "315";
-    iframe.style.maxWidth = "100%";
-    iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("allowfullscreen", "true");
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(iframe);
-
-    // Clear selection
-    selection.removeAllRanges();
+  const handleCodeChange = () => {
+    if (isCodeView && editorRef.current) {
+      setHtmlContent(editorRef.current.textContent || "");
+    }
   };
 
   const updateActiveFormats = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
-      setActiveFormats({
-        bold: false,
-        italic: false,
-        underline: false,
-        strikethrough: false,
-        alignLeft: true,
-        alignCenter: false,
-        alignRight: false,
-        alignJustify: false,
-        bulletList: false,
-        numberedList: false,
-      });
       return;
     }
 
     const range = selection.getRangeAt(0);
     let element = range.commonAncestorContainer;
 
+    // If we're in a text node, get its parent
     if (element.nodeType === Node.TEXT_NODE) {
       element = element.parentNode as Node;
     }
@@ -522,30 +281,6 @@ const Editor = () => {
   };
 
   const Divider = () => <div className="w-px h-6 bg-gray-300 mx-1" />;
-
-  const toggleCodeView = () => {
-    if (!editorRef.current) return;
-
-    if (isCodeView) {
-      // Switch from code view to visual view
-      editorRef.current.innerHTML = htmlContent;
-      editorRef.current.contentEditable = "true";
-      setIsCodeView(false);
-    } else {
-      // Switch from visual view to code view
-      const currentHtml = editorRef.current.innerHTML;
-      setHtmlContent(currentHtml);
-      editorRef.current.contentEditable = "false";
-      editorRef.current.textContent = currentHtml;
-      setIsCodeView(true);
-    }
-  };
-
-  const handleCodeChange = (e: React.FormEvent<HTMLDivElement>) => {
-    if (isCodeView && editorRef.current) {
-      setHtmlContent(editorRef.current.textContent || "");
-    }
-  };
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
