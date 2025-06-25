@@ -1,4 +1,5 @@
 import Editor from "./core/editor";
+import "./style.css";
 
 function TeddyEditor() {
   return (
