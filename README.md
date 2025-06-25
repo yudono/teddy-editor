@@ -1,69 +1,98 @@
-# React + TypeScript + Vite
+# 🧸 Teddy Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Teddy Editor** is a lightweight and customizable WYSIWYG editor built with **React**, **TypeScript**, and **Tailwind CSS**.  
+Easily integrate it into any React app and take full control over content editing behavior and toolbar visibility.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## Expanding the ESLint configuration
+- ⚛️ Built with React 19+
+- 🎨 Tailwind CSS styling
+- 🔐 Full TypeScript support
+- 🧩 Controlled component with `onChange`, `onFocus`, and `onBlur` events
+- 🧰 Optional toolbar configuration
+- 🚀 Easy to integrate, easy to extend
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 📦 Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install teddy-editor
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## ⚙️ Usage
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```tsx
+import "teddy-editor/dist/style.css";
+import { TeddyEditor } from "teddy-editor";
+
+function App() {
+  return (
+    <div className="p-6">
+      <TeddyEditor
+        content="<p>Initial content</p>"
+        onChange={(content) => console.log("Content changed:", content)}
+        onBlur={(content) => console.log("Editor lost focus:", content)}
+        onFocus={() => console.log("Editor focused")}
+        config={{
+          showTextFormat: true,
+          showInlineFormat: false,
+          showAlignment: true,
+          showList: true,
+          showInsert: true,
+          showCodeView: true,
+        }}
+      />
+    </div>
+  );
+}
 ```
+
+---
+
+## 🧩 Props
+
+| Prop                  | Type                        | Description                                 |
+| --------------------- | --------------------------- | ------------------------------------------- |
+| `content`             | `string`                    | Initial HTML content (optional)             |
+| `onChange`            | `(content: string) => void` | Callback when content changes               |
+| `onBlur`              | `(content: string) => void` | Callback when editor loses focus            |
+| `onFocus`             | `() => void`                | Callback when editor gains focus            |
+| `config`              | `object`                    | Optional toolbar configuration              |
+| ├─ `showTextFormat`   | `boolean`                   | Show bold/italic/underline menu             |
+| ├─ `showInlineFormat` | `boolean`                   | Show inline format options (sub/sup/etc)    |
+| ├─ `showAlignment`    | `boolean`                   | Show alignment controls (left/center/right) |
+| ├─ `showList`         | `boolean`                   | Show bullet and numbered list               |
+| ├─ `showInsert`       | `boolean`                   | Show insert menu (image, link, etc)         |
+| └─ `showCodeView`     | `boolean`                   | Enable raw HTML/code view toggle            |
+
+> All `config` options are optional. If not provided, all toolbar menus are shown by default.
+
+---
+
+## 🛠️ Development
+
+This project uses [Vite](https://vitejs.dev), [React](https://reactjs.org), and [TypeScript](https://www.typescriptlang.org) with ESLint.
+
+### Scripts
+
+```bash
+npm run dev         # Start dev server
+npm run build       # Build the library (JS + CSS + types)
+npm run build:css   # Build Tailwind CSS only
+npm run lint        # Run ESLint
+```
+
+---
+
+## 📄 License
+
+MIT © [Yudono Putro Utomo](https://github.com/yudono)
+
+---
+
+> Contributions are welcome! Found an issue or want to add features? Feel free to open a pull request.

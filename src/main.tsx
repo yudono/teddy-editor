@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./TeddyEditor.tsx";
+import TeddyEditor from "./TeddyEditor.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <TeddyEditor />
   </StrictMode>
 );

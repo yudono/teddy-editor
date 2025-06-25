@@ -1,3 +1,4 @@
+import React from "react";
 import { ChevronDown, Code } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import EditorInlineFormat from "./editor-inline-format";
@@ -5,7 +6,35 @@ import EditorInlineAlignment from "./editor-inline-alignment";
 import EditorList from "./editor-list";
 import EditorInsert from "./editor-insert";
 
-const Editor = () => {
+interface EditorProps {
+  content?: string;
+  onChange?: (content: string) => void;
+  onBlur?: (content: string) => void;
+  onFocus?: () => void;
+  config?: {
+    showTextFormat?: boolean;
+    showInlineFormat?: boolean;
+    showAlignment?: boolean;
+    showList?: boolean;
+    showInsert?: boolean;
+    showCodeView?: boolean;
+  };
+}
+
+const Editor: React.FC<EditorProps> = ({
+  content = "",
+  onChange,
+  onBlur,
+  onFocus,
+  config = {
+    showTextFormat: true,
+    showInlineFormat: true,
+    showAlignment: true,
+    showList: true,
+    showInsert: true,
+    showCodeView: true,
+  },
+}) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
@@ -22,7 +51,7 @@ const Editor = () => {
   const [currentTextFormat, setCurrentTextFormat] = useState("p");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCodeView, setIsCodeView] = useState(false);
-  const [htmlContent, setHtmlContent] = useState("");
+  const [htmlContent, setHtmlContent] = useState(content);
 
   const textFormats = [
     { value: "p", label: "Paragraph", tag: "p" },
@@ -142,11 +171,51 @@ const Editor = () => {
     }
   };
 
-  const handleCodeChange = () => {
-    if (isCodeView && editorRef.current) {
-      setHtmlContent(editorRef.current.textContent || "");
+  const handleContentChange = () => {
+    if (editorRef.current && onChange) {
+      const currentContent = isCodeView
+        ? editorRef.current.textContent || ""
+        : editorRef.current.innerHTML;
+      onChange(currentContent);
     }
   };
+
+  const handleCodeChange = () => {
+    if (isCodeView && editorRef.current) {
+      const newContent = editorRef.current.textContent || "";
+      setHtmlContent(newContent);
+      if (onChange) {
+        onChange(newContent);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    if (onBlur) {
+      if (editorRef.current) {
+        const newContent = editorRef.current.textContent || "";
+        onBlur(newContent);
+      }
+    }
+  };
+
+  const handleFocus = () => {
+    if (onFocus) {
+      onFocus();
+    }
+  };
+
+  // Initialize content when component mounts or content prop changes
+  useEffect(() => {
+    if (editorRef.current && content !== undefined) {
+      if (isCodeView) {
+        editorRef.current.textContent = content;
+      } else {
+        editorRef.current.innerHTML = content;
+      }
+      setHtmlContent(content);
+    }
+  }, [content, isCodeView]);
 
   const updateActiveFormats = () => {
     const selection = window.getSelection();
@@ -287,103 +356,120 @@ const Editor = () => {
       {/* Toolbar */}
       <div className="flex items-center gap-1 p-2 border border-gray-300 rounded-t-lg bg-gray-50">
         {/* Text Format Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded hover:bg-gray-100 min-w-[120px] justify-between"
-            disabled={isCodeView}
-          >
-            <span className="text-sm">
-              {textFormats.find((f) => f.value === currentTextFormat)?.label ||
-                "Paragraph"}
-            </span>
-            <ChevronDown size={14} />
-          </button>
+        {config.showTextFormat && (
+          <>
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded hover:bg-gray-100 min-w-[120px] justify-between"
+                disabled={isCodeView}
+              >
+                <span className="text-sm">
+                  {textFormats.find((f) => f.value === currentTextFormat)
+                    ?.label || "Paragraph"}
+                </span>
+                <ChevronDown size={14} />
+              </button>
 
-          {isDropdownOpen && !isCodeView && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 min-w-[120px]">
-              {textFormats.map((format) => (
-                <button
-                  key={format.value}
-                  onClick={() => applyTextFormat(format.tag)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                    currentTextFormat === format.value
-                      ? "bg-blue-50 text-blue-600"
-                      : ""
-                  }`}
-                >
-                  {format.label}
-                </button>
-              ))}
+              {isDropdownOpen && !isCodeView && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 min-w-[120px]">
+                  {textFormats.map((format) => (
+                    <button
+                      key={format.value}
+                      onClick={() => applyTextFormat(format.tag)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        currentTextFormat === format.value
+                          ? "bg-blue-50 text-blue-600"
+                          : ""
+                      }`}
+                    >
+                      {format.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        <Divider />
+            <Divider />
+          </>
+        )}
 
         {/* Font Style Group */}
-        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
-          <EditorInlineFormat
-            editorRef={editorRef}
-            activeFormats={{
-              bold: activeFormats.bold,
-              italic: activeFormats.italic,
-              underline: activeFormats.underline,
-              strikethrough: activeFormats.strikethrough,
-            }}
-            updateActiveFormats={updateActiveFormats}
-            getButtonClass={getButtonClass}
-          />
-        </div>
-
-        <Divider />
+        {config.showInlineFormat && (
+          <>
+            <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+              <EditorInlineFormat
+                editorRef={editorRef}
+                activeFormats={{
+                  bold: activeFormats.bold,
+                  italic: activeFormats.italic,
+                  underline: activeFormats.underline,
+                  strikethrough: activeFormats.strikethrough,
+                }}
+                updateActiveFormats={updateActiveFormats}
+                getButtonClass={getButtonClass}
+              />
+            </div>
+            <Divider />
+          </>
+        )}
 
         {/* Alignment Group */}
-        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
-          <EditorInlineAlignment
-            activeFormats={{
-              alignLeft: activeFormats.alignLeft,
-              alignCenter: activeFormats.alignCenter,
-              alignRight: activeFormats.alignRight,
-              alignJustify: activeFormats.alignJustify,
-            }}
-            updateActiveFormats={updateActiveFormats}
-            getButtonClass={getButtonClass}
-          />
-        </div>
-
-        <Divider />
+        {config.showAlignment && (
+          <>
+            <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+              <EditorInlineAlignment
+                activeFormats={{
+                  alignLeft: activeFormats.alignLeft,
+                  alignCenter: activeFormats.alignCenter,
+                  alignRight: activeFormats.alignRight,
+                  alignJustify: activeFormats.alignJustify,
+                }}
+                updateActiveFormats={updateActiveFormats}
+                getButtonClass={getButtonClass}
+              />
+            </div>
+            <Divider />
+          </>
+        )}
 
         {/* List Style Group */}
-        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
-          <EditorList
-            editorRef={editorRef}
-            activeFormats={{
-              bulletList: activeFormats.bulletList,
-              numberedList: activeFormats.numberedList,
-            }}
-            updateActiveFormats={updateActiveFormats}
-            getButtonClass={getButtonClass}
-          />
-        </div>
-
-        <Divider />
+        {config.showList && (
+          <>
+            <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+              <EditorList
+                editorRef={editorRef}
+                activeFormats={{
+                  bulletList: activeFormats.bulletList,
+                  numberedList: activeFormats.numberedList,
+                }}
+                updateActiveFormats={updateActiveFormats}
+                getButtonClass={getButtonClass}
+              />
+            </div>
+            <Divider />
+          </>
+        )}
 
         {/* Insert Group */}
-        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
-          <EditorInsert />
-        </div>
-
-        <Divider />
+        {config.showInsert && (
+          <>
+            <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+              <EditorInsert />
+            </div>
+            <Divider />
+          </>
+        )}
 
         {/* Code View Toggle */}
-        <button
-          onClick={toggleCodeView}
-          className={getButtonClass(isCodeView)}
-          title={isCodeView ? "Switch to Visual View" : "Switch to Code View"}
-        >
-          <Code size={16} />
-        </button>
+        {config.showCodeView && (
+          <button
+            onClick={toggleCodeView}
+            className={getButtonClass(isCodeView)}
+            title={isCodeView ? "Switch to Visual View" : "Switch to Code View"}
+          >
+            <Code size={16} />
+          </button>
+        )}
       </div>
 
       {/* Editor */}
@@ -401,7 +487,9 @@ const Editor = () => {
         onMouseUp={!isCodeView ? updateActiveFormats : undefined}
         onKeyUp={!isCodeView ? updateActiveFormats : undefined}
         onClick={() => setIsDropdownOpen(false)}
-        onInput={isCodeView ? handleCodeChange : undefined}
+        onInput={isCodeView ? handleCodeChange : handleContentChange}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
       />
     </div>
   );
