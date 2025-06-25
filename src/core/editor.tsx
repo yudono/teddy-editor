@@ -13,6 +13,7 @@ import {
   Link,
   Image,
   Video,
+  Code,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import EditorInlineFormat from "./editor-inline-format";
@@ -36,6 +37,8 @@ const Editor = () => {
   });
   const [currentTextFormat, setCurrentTextFormat] = useState("p");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCodeView, setIsCodeView] = useState(false);
+  const [htmlContent, setHtmlContent] = useState("");
 
   const textFormats = [
     { value: "p", label: "Paragraph", tag: "p" },
@@ -520,6 +523,30 @@ const Editor = () => {
 
   const Divider = () => <div className="w-px h-6 bg-gray-300 mx-1" />;
 
+  const toggleCodeView = () => {
+    if (!editorRef.current) return;
+
+    if (isCodeView) {
+      // Switch from code view to visual view
+      editorRef.current.innerHTML = htmlContent;
+      editorRef.current.contentEditable = "true";
+      setIsCodeView(false);
+    } else {
+      // Switch from visual view to code view
+      const currentHtml = editorRef.current.innerHTML;
+      setHtmlContent(currentHtml);
+      editorRef.current.contentEditable = "false";
+      editorRef.current.textContent = currentHtml;
+      setIsCodeView(true);
+    }
+  };
+
+  const handleCodeChange = (e: React.FormEvent<HTMLDivElement>) => {
+    if (isCodeView && editorRef.current) {
+      setHtmlContent(editorRef.current.textContent || "");
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       {/* Toolbar */}
@@ -529,6 +556,7 @@ const Editor = () => {
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded hover:bg-gray-100 min-w-[120px] justify-between"
+            disabled={isCodeView}
           >
             <span className="text-sm">
               {textFormats.find((f) => f.value === currentTextFormat)?.label ||
@@ -537,7 +565,7 @@ const Editor = () => {
             <ChevronDown size={14} />
           </button>
 
-          {isDropdownOpen && (
+          {isDropdownOpen && !isCodeView && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 min-w-[120px]">
               {textFormats.map((format) => (
                 <button
@@ -559,62 +587,86 @@ const Editor = () => {
         <Divider />
 
         {/* Font Style Group */}
-        <EditorInlineFormat
-          editorRef={editorRef}
-          activeFormats={{
-            bold: activeFormats.bold,
-            italic: activeFormats.italic,
-            underline: activeFormats.underline,
-            strikethrough: activeFormats.strikethrough,
-          }}
-          updateActiveFormats={updateActiveFormats}
-          getButtonClass={getButtonClass}
-        />
+        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+          <EditorInlineFormat
+            editorRef={editorRef}
+            activeFormats={{
+              bold: activeFormats.bold,
+              italic: activeFormats.italic,
+              underline: activeFormats.underline,
+              strikethrough: activeFormats.strikethrough,
+            }}
+            updateActiveFormats={updateActiveFormats}
+            getButtonClass={getButtonClass}
+          />
+        </div>
 
         <Divider />
 
         {/* Alignment Group */}
-        <EditorInlineAlignment
-          activeFormats={{
-            alignLeft: activeFormats.alignLeft,
-            alignCenter: activeFormats.alignCenter,
-            alignRight: activeFormats.alignRight,
-            alignJustify: activeFormats.alignJustify,
-          }}
-          updateActiveFormats={updateActiveFormats}
-          getButtonClass={getButtonClass}
-        />
+        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+          <EditorInlineAlignment
+            activeFormats={{
+              alignLeft: activeFormats.alignLeft,
+              alignCenter: activeFormats.alignCenter,
+              alignRight: activeFormats.alignRight,
+              alignJustify: activeFormats.alignJustify,
+            }}
+            updateActiveFormats={updateActiveFormats}
+            getButtonClass={getButtonClass}
+          />
+        </div>
 
         <Divider />
 
         {/* List Style Group */}
-        <EditorList
-          editorRef={editorRef}
-          activeFormats={{
-            bulletList: activeFormats.bulletList,
-            numberedList: activeFormats.numberedList,
-          }}
-          updateActiveFormats={updateActiveFormats}
-          getButtonClass={getButtonClass}
-        />
+        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+          <EditorList
+            editorRef={editorRef}
+            activeFormats={{
+              bulletList: activeFormats.bulletList,
+              numberedList: activeFormats.numberedList,
+            }}
+            updateActiveFormats={updateActiveFormats}
+            getButtonClass={getButtonClass}
+          />
+        </div>
 
         <Divider />
 
         {/* Insert Group */}
-        <EditorInsert />
+        <div className={isCodeView ? "opacity-50 pointer-events-none" : ""}>
+          <EditorInsert />
+        </div>
+
+        <Divider />
+
+        {/* Code View Toggle */}
+        <button
+          onClick={toggleCodeView}
+          className={getButtonClass(isCodeView)}
+          title={isCodeView ? "Switch to Visual View" : "Switch to Code View"}
+        >
+          <Code size={16} />
+        </button>
       </div>
 
       {/* Editor */}
       <div
         ref={editorRef}
-        contentEditable
-        className="min-h-[300px] p-4 border border-gray-300 border-t-0 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-blue-500 prose prose-headings:mt-0 prose-headings:mb-2"
+        contentEditable={!isCodeView}
+        className={`overflow-auto w-full p-4 border border-gray-300 border-t-0 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          isCodeView
+            ? "font-mono text-sm bg-gray-50 whitespace-pre-wrap"
+            : "prose prose-headings:mt-0 prose-headings:mb-2"
+        }`}
         style={{
-          whiteSpace: "pre-wrap",
+          whiteSpace: isCodeView ? "pre-wrap" : "pre-wrap",
         }}
-        onMouseUp={updateActiveFormats}
-        onKeyUp={updateActiveFormats}
+        onMouseUp={!isCodeView ? updateActiveFormats : undefined}
+        onKeyUp={!isCodeView ? updateActiveFormats : undefined}
         onClick={() => setIsDropdownOpen(false)}
+        onInput={isCodeView ? handleCodeChange : undefined}
       />
     </div>
   );

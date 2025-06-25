@@ -105,22 +105,46 @@ export const insertLink = (url: string, text: string) => {
   }
 
   const range = selection.getRangeAt(0);
-  const link = document.createElement("a");
-  link.href = url;
-  link.textContent = text || url;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.className = "text-blue-600 underline hover:text-blue-800";
 
-  range.deleteContents();
-  range.insertNode(link);
+  // Check if we're editing an existing link
+  let linkElement = null;
+  let current = range.commonAncestorContainer;
 
-  // Set cursor after the link
-  const newRange = document.createRange();
-  newRange.setStartAfter(link);
-  newRange.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(newRange);
+  // Find existing link element
+  while (current && current !== document.body) {
+    if (
+      current.nodeType === Node.ELEMENT_NODE &&
+      (current as HTMLElement).tagName.toLowerCase() === "a"
+    ) {
+      linkElement = current as HTMLElement;
+      break;
+    }
+    current = current.parentNode as Node;
+  }
+
+  if (linkElement) {
+    // Update existing link
+    linkElement.setAttribute("href", url);
+    linkElement.textContent = text || url;
+  } else {
+    // Create new link
+    const link = document.createElement("a");
+    link.href = url;
+    link.textContent = text || url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.className = "text-blue-600 underline hover:text-blue-800";
+
+    range.deleteContents();
+    range.insertNode(link);
+
+    // Set cursor after the link
+    const newRange = document.createRange();
+    newRange.setStartAfter(link);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
 
   // Clear saved selection
   savedSelection = null;
@@ -161,20 +185,44 @@ export const insertImage = (base64: string, alt: string = "Inserted image") => {
   }
 
   const range = selection.getRangeAt(0);
-  const img = document.createElement("img");
-  img.src = base64;
-  img.alt = alt;
-  img.className = "max-w-full h-auto rounded shadow-sm";
 
-  range.deleteContents();
-  range.insertNode(img);
+  // Check if we're editing an existing image
+  let imgElement = null;
+  let current = range.commonAncestorContainer;
 
-  // Set cursor after the image
-  const newRange = document.createRange();
-  newRange.setStartAfter(img);
-  newRange.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(newRange);
+  // Find existing image element
+  while (current && current !== document.body) {
+    if (
+      current.nodeType === Node.ELEMENT_NODE &&
+      (current as HTMLElement).tagName.toLowerCase() === "img"
+    ) {
+      imgElement = current as HTMLElement;
+      break;
+    }
+    current = current.parentNode as Node;
+  }
+
+  if (imgElement) {
+    // Update existing image
+    imgElement.setAttribute("src", base64);
+    imgElement.setAttribute("alt", alt);
+  } else {
+    // Create new image
+    const img = document.createElement("img");
+    img.src = base64;
+    img.alt = alt;
+    img.className = "max-w-full h-auto rounded shadow-sm";
+
+    range.deleteContents();
+    range.insertNode(img);
+
+    // Set cursor after the image
+    const newRange = document.createRange();
+    newRange.setStartAfter(img);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
 
   // Clear saved selection
   savedSelection = null;
@@ -218,23 +266,46 @@ export const insertVideo = (embedUrl: string) => {
   }
 
   const range = selection.getRangeAt(0);
-  const iframe = document.createElement("iframe");
-  iframe.src = embedUrl;
-  iframe.width = "560";
-  iframe.height = "315";
-  iframe.className = "max-w-full rounded shadow-sm";
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("allowfullscreen", "true");
 
-  range.deleteContents();
-  range.insertNode(iframe);
+  // Check if we're editing an existing video
+  let iframeElement = null;
+  let current = range.commonAncestorContainer;
 
-  // Set cursor after the video
-  const newRange = document.createRange();
-  newRange.setStartAfter(iframe);
-  newRange.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(newRange);
+  // Find existing iframe element
+  while (current && current !== document.body) {
+    if (
+      current.nodeType === Node.ELEMENT_NODE &&
+      (current as HTMLElement).tagName.toLowerCase() === "iframe"
+    ) {
+      iframeElement = current as HTMLElement;
+      break;
+    }
+    current = current.parentNode as Node;
+  }
+
+  if (iframeElement) {
+    // Update existing video
+    iframeElement.setAttribute("src", embedUrl);
+  } else {
+    // Create new video
+    const iframe = document.createElement("iframe");
+    iframe.src = embedUrl;
+    iframe.width = "560";
+    iframe.height = "315";
+    iframe.className = "max-w-full rounded shadow-sm";
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("allowfullscreen", "true");
+
+    range.deleteContents();
+    range.insertNode(iframe);
+
+    // Set cursor after the video
+    const newRange = document.createRange();
+    newRange.setStartAfter(iframe);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
 
   // Clear saved selection
   savedSelection = null;
@@ -352,6 +423,7 @@ const ImagePopup = ({
 }) => {
   const [alt, setAlt] = useState("");
   const [currentSrc, setCurrentSrc] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Populate fields when popup opens with existing data
   useEffect(() => {
@@ -374,6 +446,10 @@ const ImagePopup = ({
         setAlt("");
         setCurrentSrc("");
         onClose();
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -385,6 +461,12 @@ const ImagePopup = ({
       setAlt("");
       setCurrentSrc("");
       onClose();
+    }
+  };
+
+  const handleReplaceImage = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -412,8 +494,23 @@ const ImagePopup = ({
               alt={alt}
               className="max-w-full h-32 object-contain rounded border"
             />
+            <button
+              type="button"
+              onClick={handleReplaceImage}
+              className="mt-2 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              Replace Image
+            </button>
           </div>
         )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
 
         {!initialData && (
           <div className="mb-4">
@@ -439,6 +536,7 @@ const ImagePopup = ({
             onChange={(e) => setAlt(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Image description"
+            autoFocus={!!initialData}
           />
         </div>
 
