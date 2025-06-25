@@ -8,8 +8,17 @@ import {
   AlignRight,
   AlignJustify,
   ChevronDown,
+  List,
+  ListOrdered,
+  Link,
+  Image,
+  Video,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import EditorInlineFormat from "./editor-inline-format";
+import EditorInlineAlignment from "./editor-inline-alignment";
+import EditorList from "./editor-list";
+import EditorInsert from "./editor-insert";
 
 const Editor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -22,6 +31,8 @@ const Editor = () => {
     alignCenter: false,
     alignRight: false,
     alignJustify: false,
+    bulletList: false,
+    numberedList: false,
   });
   const [currentTextFormat, setCurrentTextFormat] = useState("p");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -229,6 +240,141 @@ const Editor = () => {
     }
   };
 
+  const applyListFormat = (listType: "ul" | "ol") => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    let element = range.commonAncestorContainer;
+
+    // If we're in a text node, get its parent
+    if (element.nodeType === Node.TEXT_NODE) {
+      element = element.parentNode as Node;
+    }
+
+    // Find the closest block element or list item
+    let blockElement = element as HTMLElement;
+    while (blockElement && blockElement !== editorRef.current) {
+      if (
+        ["P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL"].includes(
+          blockElement.tagName
+        )
+      ) {
+        break;
+      }
+      blockElement = blockElement.parentElement as HTMLElement;
+    }
+
+    if (!blockElement || blockElement === editorRef.current) {
+      // Create new list if no block element found
+      const listElement = document.createElement(listType);
+      const listItem = document.createElement("li");
+      listItem.textContent = selection.toString() || "List item";
+      listElement.appendChild(listItem);
+
+      range.deleteContents();
+      range.insertNode(listElement);
+
+      // Set cursor in the list item
+      const newRange = document.createRange();
+      newRange.setStart(listItem, 0);
+      newRange.setEnd(listItem, listItem.childNodes.length);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    } else if (blockElement.tagName === "LI") {
+      // Already in a list item, toggle list type or remove list
+      const currentList = blockElement.parentElement as HTMLElement;
+      if (currentList.tagName.toLowerCase() === listType) {
+        // Remove list formatting
+        const paragraph = document.createElement("p");
+        paragraph.innerHTML = blockElement.innerHTML;
+        currentList.parentNode?.replaceChild(paragraph, currentList);
+      } else {
+        // Change list type
+        const newList = document.createElement(listType);
+        newList.innerHTML = currentList.innerHTML;
+        currentList.parentNode?.replaceChild(newList, currentList);
+      }
+    } else {
+      // Convert block element to list
+      const listElement = document.createElement(listType);
+      const listItem = document.createElement("li");
+      listItem.innerHTML = blockElement.innerHTML;
+      listElement.appendChild(listItem);
+      blockElement.parentNode?.replaceChild(listElement, blockElement);
+    }
+
+    updateActiveFormats();
+  };
+
+  const insertLink = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const url = prompt("Enter URL:");
+    if (!url) return;
+
+    const selectedText = selection.toString();
+    const linkText = selectedText || url;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.textContent = linkText;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(link);
+
+    // Clear selection
+    selection.removeAllRanges();
+  };
+
+  const insertImage = () => {
+    const url = prompt("Enter image URL:");
+    if (!url) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Inserted image";
+    img.style.maxWidth = "100%";
+    img.style.height = "auto";
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(img);
+
+    // Clear selection
+    selection.removeAllRanges();
+  };
+
+  const insertVideo = () => {
+    const url = prompt("Enter video embed URL (YouTube, Vimeo, etc.):");
+    if (!url) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const iframe = document.createElement("iframe");
+    iframe.src = url;
+    iframe.width = "560";
+    iframe.height = "315";
+    iframe.style.maxWidth = "100%";
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("allowfullscreen", "true");
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(iframe);
+
+    // Clear selection
+    selection.removeAllRanges();
+  };
+
   const updateActiveFormats = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
@@ -237,21 +383,52 @@ const Editor = () => {
         italic: false,
         underline: false,
         strikethrough: false,
-        alignLeft: true, // Default to left align
+        alignLeft: true,
         alignCenter: false,
         alignRight: false,
         alignJustify: false,
+        bulletList: false,
+        numberedList: false,
       });
-      setCurrentTextFormat("p");
       return;
     }
 
     const range = selection.getRangeAt(0);
     let element = range.commonAncestorContainer;
 
-    // If we're in a text node, get its parent
     if (element.nodeType === Node.TEXT_NODE) {
       element = element.parentNode as Node;
+    }
+
+    // Find current text format
+    let formatElement = element as HTMLElement;
+    let currentFormat = "p";
+    while (formatElement && formatElement !== editorRef.current) {
+      if (
+        ["H1", "H2", "H3", "H4", "H5", "H6", "P"].includes(
+          formatElement.tagName
+        )
+      ) {
+        currentFormat = formatElement.tagName.toLowerCase();
+        break;
+      }
+      formatElement = formatElement.parentElement as HTMLElement;
+    }
+    setCurrentTextFormat(currentFormat);
+
+    // Check for list formatting
+    let listElement = element as HTMLElement;
+    let inBulletList = false;
+    let inNumberedList = false;
+    while (listElement && listElement !== editorRef.current) {
+      if (listElement.tagName === "UL") {
+        inBulletList = true;
+        break;
+      } else if (listElement.tagName === "OL") {
+        inNumberedList = true;
+        break;
+      }
+      listElement = listElement.parentElement as HTMLElement;
     }
 
     // Check for inline formatting
@@ -311,6 +488,8 @@ const Editor = () => {
       alignCenter: textAlign === "center",
       alignRight: textAlign === "right",
       alignJustify: textAlign === "justify",
+      bulletList: inBulletList,
+      numberedList: inNumberedList,
     });
   };
 
@@ -380,70 +559,49 @@ const Editor = () => {
         <Divider />
 
         {/* Font Style Group */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => applyInlineFormat("strong")}
-            className={getButtonClass(activeFormats.bold)}
-            title="Bold"
-          >
-            <Bold size={18} />
-          </button>
-          <button
-            onClick={() => applyInlineFormat("em")}
-            className={getButtonClass(activeFormats.italic)}
-            title="Italic"
-          >
-            <Italic size={18} />
-          </button>
-          <button
-            onClick={() => applyInlineFormat("u")}
-            className={getButtonClass(activeFormats.underline)}
-            title="Underline"
-          >
-            <Underline size={18} />
-          </button>
-          <button
-            onClick={() => applyInlineFormat("s")}
-            className={getButtonClass(activeFormats.strikethrough)}
-            title="Strikethrough"
-          >
-            <Strikethrough size={18} />
-          </button>
-        </div>
+        <EditorInlineFormat
+          editorRef={editorRef}
+          activeFormats={{
+            bold: activeFormats.bold,
+            italic: activeFormats.italic,
+            underline: activeFormats.underline,
+            strikethrough: activeFormats.strikethrough,
+          }}
+          updateActiveFormats={updateActiveFormats}
+          getButtonClass={getButtonClass}
+        />
 
         <Divider />
 
         {/* Alignment Group */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => applyAlignment("left")}
-            className={getButtonClass(activeFormats.alignLeft)}
-            title="Align Left"
-          >
-            <AlignLeft size={18} />
-          </button>
-          <button
-            onClick={() => applyAlignment("center")}
-            className={getButtonClass(activeFormats.alignCenter)}
-            title="Align Center"
-          >
-            <AlignCenter size={18} />
-          </button>
-          <button
-            onClick={() => applyAlignment("right")}
-            className={getButtonClass(activeFormats.alignRight)}
-            title="Align Right"
-          >
-            <AlignRight size={18} />
-          </button>
-          <button
-            onClick={() => applyAlignment("justify")}
-            className={getButtonClass(activeFormats.alignJustify)}
-            title="Justify"
-          >
-            <AlignJustify size={18} />
-          </button>
-        </div>
+        <EditorInlineAlignment
+          activeFormats={{
+            alignLeft: activeFormats.alignLeft,
+            alignCenter: activeFormats.alignCenter,
+            alignRight: activeFormats.alignRight,
+            alignJustify: activeFormats.alignJustify,
+          }}
+          updateActiveFormats={updateActiveFormats}
+          getButtonClass={getButtonClass}
+        />
+
+        <Divider />
+
+        {/* List Style Group */}
+        <EditorList
+          editorRef={editorRef}
+          activeFormats={{
+            bulletList: activeFormats.bulletList,
+            numberedList: activeFormats.numberedList,
+          }}
+          updateActiveFormats={updateActiveFormats}
+          getButtonClass={getButtonClass}
+        />
+
+        <Divider />
+
+        {/* Insert Group */}
+        <EditorInsert />
       </div>
 
       {/* Editor */}
